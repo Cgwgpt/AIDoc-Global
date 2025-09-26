@@ -12,7 +12,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from server.db import get_db, User, Base, engine
+from server.db import get_db, User, Tenant, Base, engine
 from passlib.context import CryptContext
 
 # 密码加密上下文
@@ -21,16 +21,27 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+def get_or_create_tenant(db, organization: str) -> Tenant:
+    """查找或创建租户"""
+    if not organization:
+        organization = "系统管理部门"
+    tenant = db.query(Tenant).filter(Tenant.name == organization).first()
+    if not tenant:
+        tenant = Tenant(name=organization, description=f"{organization}租户")
+        db.add(tenant)
+        db.commit()
+        db.refresh(tenant)
+    return tenant
+
 def create_admin_user(email: str, password: str, name: str = "系统管理员", role: str = "admin", organization: str = None):
-    """创建管理员用户"""
-    
+    """创建管理员用户，自动分配租户"""
     # 创建所有表
     Base.metadata.create_all(bind=engine)
-    
     # 获取数据库会话
     db = next(get_db())
-    
     try:
+        # 查找或创建租户
+        tenant = get_or_create_tenant(db, organization)
         # 检查管理员是否已存在
         existing_admin = db.query(User).filter(User.email == email).first()
         if existing_admin:
@@ -43,11 +54,11 @@ def create_admin_user(email: str, password: str, name: str = "系统管理员", 
                 existing_admin.name = name
                 existing_admin.role = role
                 existing_admin.organization = organization or existing_admin.organization
+                existing_admin.tenant_id = tenant.id
                 existing_admin.status = "active"
                 db.commit()
                 print(f"✅ 用户 {email} 已提升为{role}管理员")
                 return existing_admin
-        
         # 创建新的管理员用户
         admin_user = User(
             email=email,
@@ -60,20 +71,17 @@ def create_admin_user(email: str, password: str, name: str = "系统管理员", 
             status="active",
             usage_quota=None,  # 管理员无限制
             daily_quota=None,  # 管理员无限制
+            tenant_id=tenant.id,
         )
-        
         db.add(admin_user)
         db.commit()
         db.refresh(admin_user)
-        
         print(f"🎉 管理员账户创建成功！")
         print(f"   邮箱: {email}")
         print(f"   密码: {password}")
         print(f"   用户ID: {admin_user.id}")
         print(f"   管理员权限: {'是' if admin_user.is_admin else '否'}")
-        
         return admin_user
-        
     except Exception as e:
         db.rollback()
         print(f"❌ 创建管理员账户失败: {e}")

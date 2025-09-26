@@ -1,5 +1,6 @@
-# 使用官方Python 3.12镜像作为基础镜像
-FROM python:3.12-slim
+# 使用可配置的基础镜像（默认 python:3.12-slim）
+ARG BASE_IMAGE=python:3.12-slim
+FROM ${BASE_IMAGE}
 
 # 设置工作目录
 WORKDIR /app
@@ -14,6 +15,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件
