@@ -1,0 +1,44 @@
+# OS / Editors
+.DS_Store
+.idea/
+.vscode/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.env.*
+.venv/
+venv/
+
+# Test & tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# Node (if any demos/tools)
+node_modules/
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Databases & data artifacts
+*.db
+*.sqlite
+*.sqlite3
+/Users/chenguowen/Downloads/medd/data/**
+/Users/chenguowen/Downloads/medd/app.db
+
+# Docker
+*.pid
+
+# Misc
+coverage/

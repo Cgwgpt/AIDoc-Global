@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试Response Stream修复</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input, select { padding: 8px; margin: 5px; width: 200px; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 测试Response Stream修复</h1>
+    
+    <div class="test-section">
+        <h3>测试用户编辑功能（修复后的版本）</h3>
+        <div>
+            <label>用户ID: <input type="number" id="userId" value="7"></label><br>
+            <label>姓名: <input type="text" id="userName" value="测试医生"></label><br>
+            <label>邮箱: <input type="email" id="userEmail" value="test_doctor@hospital.com" data-original-email="test_doctor@hospital.com"></label><br>
+            <label>管理员: 
+                <select id="userAdmin">
+                    <option value="false">普通用户</option>
+                    <option value="true">管理员</option>
+                </select>
+            </label><br>
+            <button onclick="testUpdate()">测试更新</button>
+        </div>
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const ADMIN_TOKEN = 'secret-admin';
+        const BASE_URL = 'http://localhost:8000';
+        
+        // 邮箱验证函数
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        // 测试更新函数 - 使用修复后的逻辑
+        async function testUpdate() {
+            const userId = document.getElementById('userId').value;
+            const name = document.getElementById('userName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            const originalEmail = document.getElementById('userEmail').getAttribute('data-original-email');
+            const isAdmin = document.getElementById('userAdmin').value === 'true';
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            
+            // 验证
+            if (!name) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入用户姓名</div>';
+                return;
+            }
+            if (!email) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入邮箱地址</div>';
+                return;
+            }
+            if (!isValidEmail(email)) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入有效的邮箱地址</div>';
+                return;
+            }
+            
+            try {
+                const updateData = {
+                    name: name,
+                    phone: null,
+                    organization: null,
+                    status: 'active',
+                    is_admin: isAdmin
+                };
+                
+                // 只有当邮箱发生变化时才更新邮箱
+                if (email !== originalEmail) {
+                    updateData.email = email;
+                    console.log(`邮箱发生变化: ${originalEmail} -> ${email}`);
+                } else {
+                    console.log(`邮箱未变化: ${email}`);
+                }
+                
+                console.log('发送更新请求:', updateData);
+                
+                const response = await fetch(`${BASE_URL}/api/admin/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-Admin-Token': ADMIN_TOKEN,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                console.log('响应状态码:', response.status);
+                console.log('响应头:', response.headers);
+                
+                let data;
+                let responseText;
+                
+                // 修复：先获取响应文本，再尝试解析JSON
+                try {
+                    responseText = await response.text();
+                    console.log('响应文本:', responseText);
+                    // 尝试解析为JSON
+                    data = JSON.parse(responseText);
+                    console.log('解析后的数据:', data);
+                } catch (jsonError) {
+                    console.error('JSON解析错误:', jsonError);
+                    // 如果解析JSON失败，使用原始文本
+                    resultDiv.innerHTML = `<div class="error">❌ JSON解析错误: ${jsonError.message}<br>原始响应: ${responseText}</div>`;
+                    return;
+                }
+                
+                if (!response.ok) {
+                    resultDiv.innerHTML = `<div class="error">❌ 更新失败 (${response.status}): ${data?.detail || '未知错误'}</div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        ✅ 更新成功!<br>
+                        用户ID: ${data.id}<br>
+                        姓名: ${data.name}<br>
+                        邮箱: ${data.email}<br>
+                        管理员: ${data.is_admin ? '是' : '否'}<br>
+                        角色: ${data.role}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('请求错误:', error);
+                resultDiv.innerHTML = `<div class="error">❌ 请求错误: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

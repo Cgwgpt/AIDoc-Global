@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # 主应用服务
+  medgemma-app:
+    build: .
+    container_name: medgemma-app
+    ports:
+      - "8000:8000"
+    environment:
+      - ADMIN_TOKEN=secret-admin
+      - MEDGEMMA_UPSTREAM=https://ollama-medgemma-944093292687.us-central1.run.app
+      - APP_DB_PATH=/app/data/app.db
+    volumes:
+      - ./data:/app/data
+      - ./config.json:/app/config.json:ro
+      - ./static:/app/static:ro
+    depends_on:
+      - redis
+    networks:
+      - medgemma-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: medgemma-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - medgemma-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass medgemma123
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx反向代理 (可选)
+  nginx:
+    image: nginx:alpine
+    container_name: medgemma-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-simple.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - medgemma-app
+    networks:
+      - medgemma-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  medgemma-network:
+    driver: bridge

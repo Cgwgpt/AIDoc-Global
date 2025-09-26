@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试URL构建</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { background: #d1ecf1; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔍 测试URL构建</h1>
+    
+    <div class="info">
+        <h3>当前页面信息：</h3>
+        <div id="pageInfo"></div>
+    </div>
+    
+    <div class="info">
+        <h3>构建的API URL：</h3>
+        <div id="apiUrl"></div>
+    </div>
+    
+    <button onclick="testApiCall()">测试API调用</button>
+    <div id="result" style="margin-top: 10px; padding: 10px; border-radius: 5px;"></div>
+
+    <script>
+        // 显示页面信息
+        document.getElementById('pageInfo').innerHTML = `
+            <p>Protocol: ${window.location.protocol}</p>
+            <p>Host: ${window.location.host}</p>
+            <p>Origin: ${window.location.origin}</p>
+            <p>Href: ${window.location.href}</p>
+        `;
+        
+        // 构建API URL
+        const apiUrl = `${window.location.protocol}//${window.location.host}/api/admin/users/1`;
+        document.getElementById('apiUrl').innerHTML = `<p>API URL: ${apiUrl}</p>`;
+        
+        // 测试API调用
+        async function testApiCall() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '正在测试...';
+            
+            try {
+                console.log('测试API URL:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-Admin-Token': 'secret-admin',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: '测试用户',
+                        is_admin: true
+                    })
+                });
+                
+                console.log('响应状态:', response.status);
+                console.log('响应头:', Object.fromEntries(response.headers.entries()));
+                
+                const responseText = await response.text();
+                console.log('响应内容:', responseText);
+                
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    resultDiv.innerHTML = `
+                        <div style="background: #d4edda; padding: 10px; border-radius: 5px;">
+                            ✅ API调用成功!<br>
+                            状态码: ${response.status}<br>
+                            用户ID: ${data.id}<br>
+                            姓名: ${data.name}<br>
+                            管理员: ${data.is_admin ? '是' : '否'}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: #f8d7da; padding: 10px; border-radius: 5px;">
+                            ❌ API调用失败!<br>
+                            状态码: ${response.status}<br>
+                            响应内容: ${responseText}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('请求错误:', error);
+                resultDiv.innerHTML = `
+                    <div style="background: #f8d7da; padding: 10px; border-radius: 5px;">
+                        ❌ 请求错误: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+fastapi==0.114.2
+uvicorn[standard]==0.30.6
+requests==2.32.3
+SQLAlchemy==1.4.54
+passlib>=1.7.4
+email-validator>=2.2.0
+python-multipart>=0.0.9
+

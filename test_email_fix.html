@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试邮箱冲突修复</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input, select { padding: 8px; margin: 5px; width: 200px; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 测试邮箱冲突修复</h1>
+    
+    <div class="test-section">
+        <h3>测试1: 不修改邮箱，只修改管理员权限</h3>
+        <div>
+            <label>用户ID: <input type="number" id="userId1" value="7"></label><br>
+            <label>姓名: <input type="text" id="userName1" value="测试医生"></label><br>
+            <label>邮箱: <input type="email" id="userEmail1" value="test_doctor@hospital.com" data-original-email="test_doctor@hospital.com"></label><br>
+            <label>管理员: 
+                <select id="userAdmin1">
+                    <option value="false">普通用户</option>
+                    <option value="true">管理员</option>
+                </select>
+            </label><br>
+            <button onclick="testUpdate1()">测试更新（不修改邮箱）</button>
+        </div>
+        <div id="result1" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>测试2: 修改邮箱为已存在的邮箱（应该失败）</h3>
+        <div>
+            <label>用户ID: <input type="number" id="userId2" value="8"></label><br>
+            <label>姓名: <input type="text" id="userName2" value="测试用户"></label><br>
+            <label>邮箱: <input type="email" id="userEmail2" value="test@example.com" data-original-email="test_1758772220@example.com"></label><br>
+            <label>管理员: 
+                <select id="userAdmin2">
+                    <option value="false">普通用户</option>
+                    <option value="true">管理员</option>
+                </select>
+            </label><br>
+            <button onclick="testUpdate2()">测试更新（修改邮箱为已存在的）</button>
+        </div>
+        <div id="result2" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>测试3: 修改邮箱为新邮箱（应该成功）</h3>
+        <div>
+            <label>用户ID: <input type="number" id="userId3" value="9"></label><br>
+            <label>姓名: <input type="text" id="userName3" value="测试管理员"></label><br>
+            <label>邮箱: <input type="email" id="userEmail3" value="new_admin@example.com" data-original-email="admin_1758772220@example.com"></label><br>
+            <label>管理员: 
+                <select id="userAdmin3">
+                    <option value="false">普通用户</option>
+                    <option value="true">管理员</option>
+                </select>
+            </label><br>
+            <button onclick="testUpdate3()">测试更新（修改邮箱为新邮箱）</button>
+        </div>
+        <div id="result3" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const ADMIN_TOKEN = 'secret-admin';
+        const BASE_URL = 'http://localhost:8000';
+        
+        // 邮箱验证函数
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        // 测试更新函数
+        async function testUpdate(testId) {
+            const userId = document.getElementById(`userId${testId}`).value;
+            const name = document.getElementById(`userName${testId}`).value.trim();
+            const email = document.getElementById(`userEmail${testId}`).value.trim();
+            const originalEmail = document.getElementById(`userEmail${testId}`).getAttribute('data-original-email');
+            const isAdmin = document.getElementById(`userAdmin${testId}`).value === 'true';
+            
+            const resultDiv = document.getElementById(`result${testId}`);
+            resultDiv.style.display = 'block';
+            
+            // 验证
+            if (!name) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入用户姓名</div>';
+                return;
+            }
+            if (!email) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入邮箱地址</div>';
+                return;
+            }
+            if (!isValidEmail(email)) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入有效的邮箱地址</div>';
+                return;
+            }
+            
+            try {
+                const updateData = {
+                    name: name,
+                    phone: null,
+                    organization: null,
+                    status: 'active',
+                    is_admin: isAdmin
+                };
+                
+                // 只有当邮箱发生变化时才更新邮箱
+                if (email !== originalEmail) {
+                    updateData.email = email;
+                    console.log(`邮箱发生变化: ${originalEmail} -> ${email}`);
+                } else {
+                    console.log(`邮箱未变化: ${email}`);
+                }
+                
+                console.log('发送更新请求:', updateData);
+                
+                const response = await fetch(`${BASE_URL}/api/admin/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-Admin-Token': ADMIN_TOKEN,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                console.log('响应状态码:', response.status);
+                
+                let data;
+                try {
+                    data = await response.json();
+                    console.log('响应数据:', data);
+                } catch (jsonError) {
+                    console.error('JSON解析错误:', jsonError);
+                    const text = await response.text();
+                    console.log('原始响应:', text);
+                    resultDiv.innerHTML = `<div class="error">❌ JSON解析错误: ${jsonError.message}<br>原始响应: ${text}</div>`;
+                    return;
+                }
+                
+                if (!response.ok) {
+                    resultDiv.innerHTML = `<div class="error">❌ 更新失败 (${response.status}): ${data?.detail || '未知错误'}</div>`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        ✅ 更新成功!<br>
+                        用户ID: ${data.id}<br>
+                        姓名: ${data.name}<br>
+                        邮箱: ${data.email}<br>
+                        管理员: ${data.is_admin ? '是' : '否'}<br>
+                        角色: ${data.role}
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('请求错误:', error);
+                resultDiv.innerHTML = `<div class="error">❌ 请求错误: ${error.message}</div>`;
+            }
+        }
+        
+        // 测试函数
+        function testUpdate1() { testUpdate(1); }
+        function testUpdate2() { testUpdate(2); }
+        function testUpdate3() { testUpdate(3); }
+    </script>
+</body>
+</html>

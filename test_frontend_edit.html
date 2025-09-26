@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试用户编辑功能</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input, select { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 用户编辑功能测试</h1>
+    
+    <div class="test-section">
+        <h3>1. 获取用户列表</h3>
+        <button onclick="getUsers()">获取用户列表</button>
+        <div id="userList"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 编辑用户信息</h3>
+        <div>
+            <label>用户ID: <input type="number" id="userId" value="2"></label><br>
+            <label>姓名: <input type="text" id="userName" value="测试用户"></label><br>
+            <label>邮箱: <input type="email" id="userEmail" value="test@example.com"></label><br>
+            <label>管理员: 
+                <select id="userAdmin">
+                    <option value="false">普通用户</option>
+                    <option value="true">管理员</option>
+                </select>
+            </label><br>
+            <button onclick="updateUser()">更新用户</button>
+        </div>
+        <div id="updateResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 验证更新结果</h3>
+        <button onclick="verifyUpdate()">验证更新</button>
+        <div id="verifyResult"></div>
+    </div>
+
+    <script>
+        const ADMIN_TOKEN = 'secret-admin';
+        const BASE_URL = 'http://localhost:8000';
+        
+        // 邮箱验证函数
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        // 获取用户列表
+        async function getUsers() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin/users`, {
+                    headers: { 'X-Admin-Token': ADMIN_TOKEN }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const users = await response.json();
+                const userListDiv = document.getElementById('userList');
+                
+                let html = '<h4>用户列表:</h4><table border="1" style="border-collapse: collapse; width: 100%;">';
+                html += '<tr><th>ID</th><th>姓名</th><th>邮箱</th><th>管理员</th><th>状态</th></tr>';
+                
+                users.forEach(user => {
+                    html += `<tr>
+                        <td>${user.id}</td>
+                        <td>${user.name || '-'}</td>
+                        <td>${user.email}</td>
+                        <td>${user.is_admin ? '是' : '否'}</td>
+                        <td>${user.status || 'active'}</td>
+                    </tr>`;
+                });
+                
+                html += '</table>';
+                userListDiv.innerHTML = html;
+                userListDiv.parentElement.className = 'test-section success';
+                
+            } catch (error) {
+                document.getElementById('userList').innerHTML = `❌ 错误: ${error.message}`;
+                document.getElementById('userList').parentElement.className = 'test-section error';
+            }
+        }
+        
+        // 更新用户
+        async function updateUser() {
+            const userId = document.getElementById('userId').value;
+            const name = document.getElementById('userName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            const isAdmin = document.getElementById('userAdmin').value === 'true';
+            
+            // 验证
+            if (!name) {
+                alert('请输入用户姓名');
+                return;
+            }
+            if (!email) {
+                alert('请输入邮箱地址');
+                return;
+            }
+            if (!isValidEmail(email)) {
+                alert('请输入有效的邮箱地址');
+                return;
+            }
+            
+            try {
+                const updateData = {
+                    name: name,
+                    email: email,
+                    is_admin: isAdmin
+                };
+                
+                const response = await fetch(`${BASE_URL}/api/admin/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-Admin-Token': ADMIN_TOKEN,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${result.detail || response.statusText}`);
+                }
+                
+                document.getElementById('updateResult').innerHTML = `
+                    <div class="success">
+                        ✅ 用户更新成功!<br>
+                        用户ID: ${result.id}<br>
+                        姓名: ${result.name}<br>
+                        邮箱: ${result.email}<br>
+                        管理员: ${result.is_admin ? '是' : '否'}
+                    </div>
+                `;
+                document.getElementById('updateResult').parentElement.className = 'test-section success';
+                
+            } catch (error) {
+                document.getElementById('updateResult').innerHTML = `❌ 更新失败: ${error.message}`;
+                document.getElementById('updateResult').parentElement.className = 'test-section error';
+            }
+        }
+        
+        // 验证更新
+        async function verifyUpdate() {
+            const userId = document.getElementById('userId').value;
+            
+            try {
+                const response = await fetch(`${BASE_URL}/api/admin/users`, {
+                    headers: { 'X-Admin-Token': ADMIN_TOKEN }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const users = await response.json();
+                const user = users.find(u => u.id == userId);
+                
+                if (!user) {
+                    throw new Error('找不到用户');
+                }
+                
+                document.getElementById('verifyResult').innerHTML = `
+                    <div class="success">
+                        ✅ 验证成功!<br>
+                        用户ID: ${user.id}<br>
+                        姓名: ${user.name}<br>
+                        邮箱: ${user.email}<br>
+                        管理员: ${user.is_admin ? '是' : '否'}<br>
+                        状态: ${user.status || 'active'}
+                    </div>
+                `;
+                document.getElementById('verifyResult').parentElement.className = 'test-section success';
+                
+            } catch (error) {
+                document.getElementById('verifyResult').innerHTML = `❌ 验证失败: ${error.message}`;
+                document.getElementById('verifyResult').parentElement.className = 'test-section error';
+            }
+        }
+        
+        // 页面加载时自动获取用户列表
+        window.onload = function() {
+            getUsers();
+        };
+    </script>
+</body>
+</html>

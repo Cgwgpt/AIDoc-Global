@@ -1,0 +1,28 @@
+{
+  "upstream_services": {
+    "default": {
+      "name": "默认服务",
+      "url": "https://ollama-medgemma-944093292687.us-central1.run.app",
+      "model": "hf.co/unsloth/medgemma-4b-it-GGUF:Q4_K_M",
+      "description": "官方默认MedGemma服务",
+      "enabled": true
+    },
+    "local": {
+      "name": "本地服务",
+      "url": "http://localhost:11434",
+      "model": "deepseek-r1:14b",
+      "description": "本地Ollama服务",
+      "enabled": true
+    },
+    "backup1": {
+      "name": "亚洲东南服务",
+      "url": "https://ollama-backend-944093292687.asia-southeast1.run.app",
+      "model": "hf.co/unsloth/medgemma-4b-it-GGUF:BF16",
+      "description": "亚洲东南地区MedGemma服务（BF16精度）",
+      "enabled": true
+    }
+  },
+  "current_upstream": "default",
+  "auto_failover": true,
+  "health_check_interval": 30
+}

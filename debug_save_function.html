@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试保存函数</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { background: #d1ecf1; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #f8d7da; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 调试保存函数</h1>
+    
+    <div class="info">
+        <h3>当前页面信息：</h3>
+        <div id="pageInfo"></div>
+    </div>
+    
+    <div class="info">
+        <h3>函数检查：</h3>
+        <div id="functionInfo"></div>
+    </div>
+    
+    <button onclick="testSaveUserEdit()">测试 saveUserEdit 函数</button>
+    <div id="result" style="margin-top: 10px;"></div>
+
+    <script>
+        // 显示页面信息
+        document.getElementById('pageInfo').innerHTML = `
+            <p>Protocol: ${window.location.protocol}</p>
+            <p>Host: ${window.location.host}</p>
+            <p>Origin: ${window.location.origin}</p>
+            <p>Href: ${window.location.href}</p>
+        `;
+        
+        // 检查函数信息
+        document.getElementById('functionInfo').innerHTML = `
+            <p>window.saveUserEdit 存在: ${typeof window.saveUserEdit}</p>
+            <p>saveUserEdit 存在: ${typeof saveUserEdit}</p>
+        `;
+        
+        // 模拟创建编辑表单
+        function createMockEditForm() {
+            const existingForm = document.getElementById('mockEditForm');
+            if (existingForm) {
+                existingForm.remove();
+            }
+            
+            const form = document.createElement('div');
+            form.id = 'mockEditForm';
+            form.innerHTML = `
+                <input id="editUserName" type="text" value="测试用户" />
+                <input id="editUserEmail" type="email" value="test@example.com" data-original-email="test@example.com" />
+                <input id="editUserPhone" type="tel" value="13800138000" />
+                <input id="editUserOrg" type="text" value="测试机构" />
+                <select id="editUserStatus"><option value="active" selected>活跃</option></select>
+                <select id="editUserAdmin"><option value="true" selected>管理员</option></select>
+                <input id="adminToken" type="text" value="secret-admin" />
+            `;
+            form.style.display = 'none';
+            document.body.appendChild(form);
+        }
+        
+        // 定义全局的saveUserEdit函数用于测试
+        window.saveUserEdit = async function(userId) {
+            console.log('🔍 调试: saveUserEdit函数被调用，userId:', userId);
+            
+            const name = document.getElementById('editUserName')?.value || '测试用户';
+            const email = document.getElementById('editUserEmail')?.value || 'test@example.com';
+            const phone = document.getElementById('editUserPhone')?.value || '';
+            const organization = document.getElementById('editUserOrg')?.value || '';
+            const status = document.getElementById('editUserStatus')?.value || 'active';
+            const isAdmin = document.getElementById('editUserAdmin')?.value === 'true';
+            const originalEmail = document.getElementById('editUserEmail')?.getAttribute('data-original-email') || email;
+            const tok = document.getElementById('adminToken')?.value || 'secret-admin';
+            
+            const updateData = {
+                name: name,
+                phone: phone || null,
+                organization: organization || null,
+                status: status,
+                is_admin: isAdmin
+            };
+            
+            if (email !== originalEmail) {
+                updateData.email = email;
+            }
+            
+            // 构建API URL
+            const apiUrl = `${window.location.protocol}//${window.location.host}/api/admin/users/${userId}`;
+            
+            console.log('🔍 发送用户更新请求:', {
+                url: apiUrl,
+                data: updateData,
+                token: tok
+            });
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': tok
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                console.log('🔍 收到响应:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                });
+                
+                const responseText = await response.text();
+                console.log('🔍 响应文本:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('🔍 解析后的数据:', data);
+                } catch (jsonError) {
+                    console.error('🔍 JSON解析错误:', jsonError);
+                    document.getElementById('result').innerHTML = `
+                        <div class="error">
+                            ❌ JSON解析失败!<br>
+                            状态码: ${response.status}<br>
+                            响应内容: ${responseText}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = `
+                        <div class="info">
+                            ✅ 保存成功!<br>
+                            状态码: ${response.status}<br>
+                            用户ID: ${data.id}<br>
+                            姓名: ${data.name}<br>
+                            管理员: ${data.is_admin ? '是' : '否'}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+                        <div class="error">
+                            ❌ 保存失败!<br>
+                            状态码: ${response.status}<br>
+                            错误信息: ${data?.detail || '未知错误'}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('🔍 请求错误:', error);
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        ❌ 请求异常: ${error.message}
+                    </div>
+                `;
+            }
+        };
+        
+        // 测试函数
+        function testSaveUserEdit() {
+            console.log('🔍 开始测试 saveUserEdit 函数...');
+            createMockEditForm();
+            
+            // 测试调用
+            if (typeof window.saveUserEdit === 'function') {
+                window.saveUserEdit(1);
+            } else {
+                document.getElementById('result').innerHTML = `
+                    <div class="error">
+                        ❌ window.saveUserEdit 函数不存在!
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

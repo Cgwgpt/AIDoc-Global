@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试用户编辑功能</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input, select { padding: 8px; margin: 5px; width: 200px; }
+        .result { margin-top: 10px; padding: 10px; border-radius: 5px; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 调试用户编辑功能</h1>
+    
+    <div class="debug-section">
+        <h3>调试信息</h3>
+        <div id="debugInfo" class="result info" style="display: none;"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h3>测试用户编辑</h3>
+        <div>
+            <label>用户ID: <input type="number" id="userId" value="7"></label><br>
+            <label>姓名: <input type="text" id="userName" value="测试医生"></label><br>
+            <label>邮箱: <input type="email" id="userEmail" value="test_doctor@hospital.com" data-original-email="test_doctor@hospital.com"></label><br>
+            <label>手机: <input type="tel" id="userPhone" value="13800000001"></label><br>
+            <label>机构: <input type="text" id="userOrg" value="上海瑞金医院"></label><br>
+            <label>状态: 
+                <select id="userStatus">
+                    <option value="active">活跃</option>
+                    <option value="disabled">禁用</option>
+                </select>
+            </label><br>
+            <label>管理员: 
+                <select id="userAdmin">
+                    <option value="false">普通用户</option>
+                    <option value="true">管理员</option>
+                </select>
+            </label><br>
+            <button onclick="debugUpdate()">调试更新</button>
+        </div>
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const ADMIN_TOKEN = 'secret-admin';
+        const BASE_URL = 'http://localhost:8000';
+        
+        // 邮箱验证函数
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        // 调试更新函数
+        async function debugUpdate() {
+            const userId = document.getElementById('userId').value;
+            const name = document.getElementById('userName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            const phone = document.getElementById('userPhone').value.trim();
+            const organization = document.getElementById('userOrg').value.trim();
+            const status = document.getElementById('userStatus').value;
+            const originalEmail = document.getElementById('userEmail').getAttribute('data-original-email');
+            const isAdmin = document.getElementById('userAdmin').value === 'true';
+            
+            const resultDiv = document.getElementById('result');
+            const debugDiv = document.getElementById('debugInfo');
+            resultDiv.style.display = 'block';
+            debugDiv.style.display = 'block';
+            
+            // 收集调试信息
+            let debugInfo = [];
+            debugInfo.push(`用户ID: ${userId}`);
+            debugInfo.push(`姓名: ${name}`);
+            debugInfo.push(`邮箱: ${email} (原始: ${originalEmail})`);
+            debugInfo.push(`手机: ${phone}`);
+            debugInfo.push(`机构: ${organization}`);
+            debugInfo.push(`状态: ${status}`);
+            debugInfo.push(`管理员: ${isAdmin}`);
+            debugInfo.push(`邮箱是否变化: ${email !== originalEmail}`);
+            
+            // 验证
+            if (!name) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入用户姓名</div>';
+                debugDiv.innerHTML = debugInfo.join('<br>');
+                return;
+            }
+            if (!email) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入邮箱地址</div>';
+                debugDiv.innerHTML = debugInfo.join('<br>');
+                return;
+            }
+            if (!isValidEmail(email)) {
+                resultDiv.innerHTML = '<div class="error">❌ 请输入有效的邮箱地址</div>';
+                debugDiv.innerHTML = debugInfo.join('<br>');
+                return;
+            }
+            
+            try {
+                const updateData = {
+                    name: name,
+                    phone: phone || null,
+                    organization: organization || null,
+                    status: status,
+                    is_admin: isAdmin
+                };
+                
+                // 只有当邮箱发生变化时才更新邮箱
+                if (email !== originalEmail) {
+                    updateData.email = email;
+                    debugInfo.push(`✅ 邮箱发生变化，添加到更新数据`);
+                } else {
+                    debugInfo.push(`✅ 邮箱未变化，不添加到更新数据`);
+                }
+                
+                debugInfo.push(`更新数据: ${JSON.stringify(updateData, null, 2)}`);
+                
+                console.log('发送更新请求:', updateData);
+                debugInfo.push(`发送请求到: ${BASE_URL}/api/admin/users/${userId}`);
+                
+                const response = await fetch(`${BASE_URL}/api/admin/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-Admin-Token': ADMIN_TOKEN,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                debugInfo.push(`响应状态码: ${response.status}`);
+                debugInfo.push(`响应头: ${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}`);
+                
+                let data;
+                let responseText;
+                
+                // 先获取响应文本
+                try {
+                    responseText = await response.text();
+                    debugInfo.push(`响应文本: ${responseText}`);
+                    // 尝试解析为JSON
+                    data = JSON.parse(responseText);
+                    debugInfo.push(`解析后的数据: ${JSON.stringify(data, null, 2)}`);
+                } catch (jsonError) {
+                    console.error('JSON解析错误:', jsonError);
+                    debugInfo.push(`JSON解析错误: ${jsonError.message}`);
+                    resultDiv.innerHTML = `<div class="error">❌ JSON解析错误: ${jsonError.message}<br>原始响应: ${responseText}</div>`;
+                    debugDiv.innerHTML = debugInfo.join('<br>');
+                    return;
+                }
+                
+                if (!response.ok) {
+                    resultDiv.innerHTML = `<div class="error">❌ 更新失败 (${response.status}): ${data?.detail || '未知错误'}</div>`;
+                    debugDiv.innerHTML = debugInfo.join('<br>');
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        ✅ 更新成功!<br>
+                        用户ID: ${data.id}<br>
+                        姓名: ${data.name}<br>
+                        邮箱: ${data.email}<br>
+                        管理员: ${data.is_admin ? '是' : '否'}<br>
+                        角色: ${data.role}
+                    </div>
+                `;
+                
+                debugDiv.innerHTML = debugInfo.join('<br>');
+                
+            } catch (error) {
+                console.error('请求错误:', error);
+                debugInfo.push(`请求错误: ${error.message}`);
+                resultDiv.innerHTML = `<div class="error">❌ 请求错误: ${error.message}</div>`;
+                debugDiv.innerHTML = debugInfo.join('<br>');
+            }
+        }
+    </script>
+</body>
+</html>
