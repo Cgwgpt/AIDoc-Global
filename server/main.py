@@ -131,7 +131,7 @@ def proxy_generate(
             db.add(user)
             db.commit()
             try:
-                evt = UsageEvent(user_id=user.id, event_type="generate", tokens_used=None, latency_ms=None, meta=json.dumps({"stream": True}))
+                evt = UsageEvent(user_id=user.id, tenant_id=user.tenant_id, event_type="generate", tokens_used=None, latency_ms=None, meta=json.dumps({"stream": True}))
                 db.add(evt)
                 db.commit()
             except Exception:
@@ -158,7 +158,7 @@ def proxy_generate(
             db.commit()
             try:
                 latency_ms = None
-                evt = UsageEvent(user_id=user.id, event_type="generate", tokens_used=None, latency_ms=latency_ms, meta=json.dumps({"stream": False}))
+                evt = UsageEvent(user_id=user.id, tenant_id=user.tenant_id, event_type="generate", tokens_used=None, latency_ms=latency_ms, meta=json.dumps({"stream": False}))
                 db.add(evt)
                 db.commit()
             except Exception:
