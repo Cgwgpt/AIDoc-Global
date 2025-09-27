@@ -119,6 +119,7 @@
         .inputbar textarea {
           font-size: 14px;
           min-height: 20px;
+          padding: 6px 10px;
         }
         .empty, .panel, .gallery, .drop {
           border-radius: 10px !important;
@@ -1312,16 +1313,39 @@
         font-family: inherit;
         max-height: 200px;
         resize: none;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
         background: transparent;
         color: var(--text);
         line-height: 1.5;
         position: relative;
         z-index: 1;
+        padding: 8px 12px;
+        min-height: 24px;
+        word-wrap: break-word;
+        white-space: pre-wrap;
       }
       
       .inputbar textarea::placeholder {
         color: var(--text-muted);
+      }
+      
+      /* 输入框滚动条样式 */
+      .inputbar textarea::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .inputbar textarea::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      .inputbar textarea::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+      
+      .inputbar textarea::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
       }
       
       .circle[aria-disabled="true"] {
@@ -1881,6 +1905,7 @@
         .inputbar textarea {
           font-size: 13px;
           min-height: 18px;
+          padding: 4px 8px;
         }
       }
       
@@ -4560,9 +4585,14 @@
           }
         }catch{}
         const defaults = [
-          { id: String(Date.now()-3), title: '结构化病史采集', text: '请按“主诉-现病史-既往史-过敏史-用药史-家族史-个人史-体格检查-辅助检查-初步诊断-鉴别诊断-处理建议”结构化输出。' },
-          { id: String(Date.now()-2), title: '影像判读模板', text: '请逐项描述影像所见：部位、大小、形态、边界、密度/信号、强化特征，并给出可能诊断及依据。最后建议进一步检查。' },
-          { id: String(Date.now()-1), title: '用词规范提醒', text: '回答需谨慎保守，避免绝对化表述。对不确定结论说明不确定性，并建议至相应专科就诊。' }
+          { id: String(Date.now()-8), title: '放射科专科医生', text: '您是获得委员会认证的放射科专科医生。描述这张放射照片,请使用恰当的临床术语进行回答.先列出异常情况,然后描述.建议进一步的检查.' },
+          { id: String(Date.now()-7), title: '诊断方向', text: '患者,45岁男性,主诉胸痛2天,伴有呼吸困难和轻微出汗。疼痛位于胸骨后,有压迫感,活动后加重。有高血压病史5年,规律服用降压药。父亲有冠心病史。体检:BP 150/95mmHg,HR 92bpm,呼吸音清晰。提供可能的诊断方向。' },
+          { id: String(Date.now()-6), title: '病理切片分析', text: '分析这张H&E染色的前列腺活检图像。根据细胞核形态和腺体结构,评估是否存在恶性细胞,并提供Gleason评分的初步判断。' },
+          { id: String(Date.now()-5), title: '结构化病史采集', text: '请按"主诉-现病史-既往史-过敏史-用药史-家族史-个人史-体格检查-辅助检查-初步诊断-鉴别诊断-处理建议"结构化输出。' },
+          { id: String(Date.now()-4), title: '临床问答', text: '胃溃疡患者，如何进行药物治疗和饮食指导？' },
+          { id: String(Date.now()-3), title: '个性化治疗建议', text: '患者,58岁女性,新诊断2型糖尿病,HbA1c 8.2%,空腹血糖9.6mmol/L。有轻度肾功能不全 (eGFR 65ml/min)轻度高血压(140/85mmHg)BMI 27kg/m²。目前服用缬沙坦80mg每日一次。无药物过敏史。请提供个性化治疗方案建议。' },
+          { id: String(Date.now()-2), title: '药物相互作用分析', text: '药物相互作用分析 检查多种药物之间的潜在相互作用，严重风险,中度风险;避免不良反应.' },
+          { id: String(Date.now()-1), title: '患者教育', text: '请用通俗易懂的语言向65岁老年患者解释高血压的成因、风险和治疗方法。患者教育程度为初中,希望了解如何通过生活方式改变和药物治疗来控制血压。' }
         ];
         localStorage.setItem(LS_PROMPTS, JSON.stringify(defaults));
         return defaults;
