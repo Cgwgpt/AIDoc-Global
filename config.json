@@ -22,7 +22,7 @@
       "enabled": true
     }
   },
-  "current_upstream": "default",
+  "current_upstream": "backup1",
   "auto_failover": true,
   "health_check_interval": 30
 }
